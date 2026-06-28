@@ -31,6 +31,9 @@ export default class MermaidCanvasPlugin extends Plugin {
       this.scanElement(element, context.sourcePath);
     });
     this.scheduleRetryScan();
+    setTimeout(() => { this.scanActiveView(); }, 2000);
+    setTimeout(() => { this.scanActiveView(); }, 4000);
+    setTimeout(() => { this.scanActiveView(); }, 8000);
     this.setupObserver();
 
     this.registerEvent(
@@ -118,7 +121,7 @@ export default class MermaidCanvasPlugin extends Plugin {
 
   // ─── Scanning ──────────────────────────────────────────────────
 
-  private readonly MERMAID_SELECTORS = '.mermaid, .block-language-mermaid';
+  private readonly MERMAID_SELECTORS = '.mermaid, .block-language-mermaid, .language-mermaid';
   private readonly LIVE_SELECTORS = '.mermaid, .block-language-mermaid, .cm-lang-mermaid';
 
   private scanElement(element: HTMLElement, sourcePath: string): void {
