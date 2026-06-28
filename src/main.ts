@@ -132,6 +132,9 @@ export default class MermaidCanvasPlugin extends Plugin {
       this.enhanceBlock(c, sourcePath);
       pos++;
     }
+
+    // Reading mode: editor is unavailable, need vault fallback
+    if (editorCodes.length === 0) this.fillSourceCodes();
   }
 
   private readAllEditorBlocks(sourcePath: string): string[] {
@@ -145,6 +148,47 @@ export default class MermaidCanvasPlugin extends Plugin {
     return codes;
   }
 
+  /** Read mermaid blocks from vault file (fallback when editor is unavailable, e.g. reading mode) */
+  private async readBlocksFromVault(sourcePath: string): Promise<string[]> {
+    const codes: string[] = [];
+    try {
+      const file = this.app.vault.getAbstractFileByPath(sourcePath);
+      if (!file) return codes;
+      const content = await this.app.vault.cachedRead(file as import('obsidian').TFile);
+      const regex = /```mermaid\n([\s\S]*?)```/g;
+      let m: RegExpExecArray | null;
+      while ((m = regex.exec(content)) !== null) codes.push(m[1].trimEnd());
+    } catch { /* file not readable */ }
+    return codes;
+  }
+
+  /** Ensure all un-enhanced containers in the active view have data-mermaid-src set.
+   *  Falls back to vault reading when the editor is unavailable (reading mode). */
+  private async fillSourceCodes(): Promise<void> {
+    const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+    if (!view) return;
+    const sourcePath = view.file?.path ?? '';
+    const containers = view.containerEl.querySelectorAll<HTMLElement>(this.MERMAID_SELECTORS);
+    if (containers.length === 0) return;
+
+    // Try editor first (live preview / source mode), then vault (reading mode)
+    let codes = this.readAllEditorBlocks(sourcePath);
+    if (codes.length === 0) {
+      codes = await this.readBlocksFromVault(sourcePath);
+    }
+    if (codes.length === 0) return;
+
+    let pos = 0;
+    for (const c of containers) {
+      if (c.closest('.' + CLASSES.CANVAS_WRAPPER)) { pos++; continue; }
+      if (c.closest('.' + CLASSES.SPLIT_MODAL)) { pos++; continue; }
+      if (pos < codes.length && !c.getAttribute('data-mermaid-src')) {
+        c.setAttribute('data-mermaid-src', codes[pos]);
+      }
+      pos++;
+    }
+  }
+
   private scanActiveView(): number {
     const view = this.app.workspace.getActiveViewOfType(MarkdownView);
     if (!view) return 0;
@@ -156,6 +200,8 @@ export default class MermaidCanvasPlugin extends Plugin {
       if (c.closest('.' + CLASSES.SPLIT_MODAL)) continue;
       if (c.querySelector('svg')) { this.enhanceBlock(c, sourcePath); count++; }
     }
+    // Ensure source codes are populated (observer/retry path may miss them)
+    if (count > 0) this.fillSourceCodes();
     return count;
   }
 
@@ -206,18 +252,8 @@ export default class MermaidCanvasPlugin extends Plugin {
     const h = parseFloat(svg.getAttribute('height') || '0');
     if (w < 10 && h < 10) return;
 
-    // Compute srcCode reliably: use attribute or fallback based on DOM position
-    const attrCode = container.getAttribute('data-mermaid-src') ?? '';
-    const blockIdx = this.computeIdxForContainer(container);
-    const editorCodes = this.readAllEditorBlocks(sourcePath);
-    console.log('[MermaidCanvas] enhanceBlock: attrCode=', attrCode, 'blockIdx=', blockIdx, 'editorCodes=', editorCodes);
-    const srcCode = attrCode || (blockIdx >= 0 && blockIdx < editorCodes.length ? editorCodes[blockIdx] : '');
-
     try {
-      const cv = new CanvasView(container, {
-        zoomSensitivity: this.getEffectiveSensitivity(),
-        getSourceCode: async () => srcCode,
-      });
+      const cv = new CanvasView(container, { zoomSensitivity: this.getEffectiveSensitivity() });
       cv.mount(svg);
       if (!cv.getWrapper()) return;
       this.canvasViews.add(cv);
@@ -227,14 +263,6 @@ export default class MermaidCanvasPlugin extends Plugin {
   }
 
   /** Find the index of this container among all mermaid blocks (even inside wrappers) */
-  private computeIdxForContainer(container: HTMLElement): number {
-    // Only count same-type elements. Don't filter out wrapped ones —
-    // the wrapper preserves document position, so the DOM order matches source order.
-    const sel = container.matches('.cm-lang-mermaid') ? '.cm-lang-mermaid' : this.MERMAID_SELECTORS;
-    const all = [...document.querySelectorAll<HTMLElement>(sel)];
-    all.sort((a, b) => a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1);
-    return all.indexOf(container);
-  }
 
   // ─── Edit via button interception ──────────────────────────────
 

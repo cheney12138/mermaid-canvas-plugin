@@ -1,9 +1,8 @@
-import { setIcon, MarkdownRenderer, Component, Notice } from 'obsidian';
+import { setIcon, MarkdownRenderer, Component } from 'obsidian';
 import { CLASSES, DEFAULT_SETTINGS } from './constants';
 
 export interface CanvasOptions {
   zoomSensitivity: number;
-  getSourceCode?: () => Promise<string>;
 }
 
 /**
@@ -24,8 +23,6 @@ export class CanvasView {
   private content!: HTMLElement;
   private controlBar!: HTMLElement;
   private svgEl!: HTMLElement;
-  // Source code of the mermaid diagram (for copy button)
-  private sourceCode = '';
 
   // Transform state (kept in memory, not read from DOM)
   private scale = 1;
@@ -186,7 +183,6 @@ export class CanvasView {
 
   /** Render mermaid code to SVG, then mount (split-modal usage) */
   async mountFromCode(code: string, sourcePath: string): Promise<void> {
-    this.sourceCode = code;
     this.wrapper = this.container.createDiv({ cls: CLASSES.CANVAS_WRAPPER });
     this.content = this.wrapper.createDiv({ cls: CLASSES.CANVAS_CONTENT });
     this.controlBar = this.wrapper.createDiv({ cls: CLASSES.CONTROL_BAR });
@@ -339,7 +335,6 @@ export class CanvasView {
       { icon: 'zoom-out', title: 'Zoom Out', action: () => this.zoomOut() },
       { icon: 'maximize', title: 'Fullscreen', action: () => this.enterFullscreen() },
       { icon: 'crop', title: 'Fit to canvas', action: () => this.fitToCanvas() },
-      { icon: 'copy', title: 'Copy code (without fences)', action: () => this.copyCode() },
     ];
 
     for (const { icon, title, action } of buttons) {
@@ -503,24 +498,6 @@ export class CanvasView {
     this.tx = 0;
     this.ty = 0;
     this.applyTransform();
-  }
-
-  /** Copy mermaid source code without ``` fences */
-  async copyCode(): Promise<void> {
-    let code = this.sourceCode;
-    // Try the getSourceCode callback if no source was provided at mount time
-    if (!code && this.options.getSourceCode) {
-      code = await this.options.getSourceCode();
-    }
-    if (code) {
-      navigator.clipboard.writeText(code).then(() => {
-        new Notice('Mermaid code copied to clipboard');
-      }).catch(() => {
-        new Notice('Failed to copy');
-      });
-    } else {
-      new Notice('No code to copy');
-    }
   }
 
   /** @deprecated Use fitToCanvas() instead */

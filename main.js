@@ -61,8 +61,6 @@ var RENDER_DEBOUNCE = 300;
 // src/CanvasView.ts
 var CanvasView = class {
   constructor(container, options) {
-    // Source code of the mermaid diagram (for copy button)
-    this.sourceCode = "";
     // Transform state (kept in memory, not read from DOM)
     this.scale = 1;
     this.tx = 0;
@@ -188,7 +186,6 @@ var CanvasView = class {
   }
   /** Render mermaid code to SVG, then mount (split-modal usage) */
   async mountFromCode(code, sourcePath) {
-    this.sourceCode = code;
     this.wrapper = this.container.createDiv({ cls: CLASSES.CANVAS_WRAPPER });
     this.content = this.wrapper.createDiv({ cls: CLASSES.CANVAS_CONTENT });
     this.controlBar = this.wrapper.createDiv({ cls: CLASSES.CONTROL_BAR });
@@ -303,8 +300,7 @@ var CanvasView = class {
       { icon: "zoom-in", title: "Zoom In", action: () => this.zoomIn() },
       { icon: "zoom-out", title: "Zoom Out", action: () => this.zoomOut() },
       { icon: "maximize", title: "Fullscreen", action: () => this.enterFullscreen() },
-      { icon: "crop", title: "Fit to canvas", action: () => this.fitToCanvas() },
-      { icon: "copy", title: "Copy code (without fences)", action: () => this.copyCode() }
+      { icon: "crop", title: "Fit to canvas", action: () => this.fitToCanvas() }
     ];
     for (const { icon, title, action } of buttons) {
       const btn = this.controlBar.createEl("button", { cls: CLASSES.CONTROL_BTN, title });
@@ -435,22 +431,6 @@ var CanvasView = class {
     this.tx = 0;
     this.ty = 0;
     this.applyTransform();
-  }
-  /** Copy mermaid source code without ``` fences */
-  async copyCode() {
-    let code = this.sourceCode;
-    if (!code && this.options.getSourceCode) {
-      code = await this.options.getSourceCode();
-    }
-    if (code) {
-      navigator.clipboard.writeText(code).then(() => {
-        new import_obsidian.Notice("Mermaid code copied to clipboard");
-      }).catch(() => {
-        new import_obsidian.Notice("Failed to copy");
-      });
-    } else {
-      new import_obsidian.Notice("No code to copy");
-    }
   }
   /** @deprecated Use fitToCanvas() instead */
   reset() {
@@ -731,6 +711,8 @@ var MermaidCanvasPlugin = class extends import_obsidian4.Plugin {
       this.enhanceBlock(c, sourcePath);
       pos++;
     }
+    if (editorCodes.length === 0)
+      this.fillSourceCodes();
   }
   readAllEditorBlocks(sourcePath) {
     const codes = [];
@@ -742,6 +724,54 @@ var MermaidCanvasPlugin = class extends import_obsidian4.Plugin {
         codes.push(m[1].trimEnd());
     }
     return codes;
+  }
+  /** Read mermaid blocks from vault file (fallback when editor is unavailable, e.g. reading mode) */
+  async readBlocksFromVault(sourcePath) {
+    const codes = [];
+    try {
+      const file = this.app.vault.getAbstractFileByPath(sourcePath);
+      if (!file)
+        return codes;
+      const content = await this.app.vault.cachedRead(file);
+      const regex = /```mermaid\n([\s\S]*?)```/g;
+      let m;
+      while ((m = regex.exec(content)) !== null)
+        codes.push(m[1].trimEnd());
+    } catch {
+    }
+    return codes;
+  }
+  /** Ensure all un-enhanced containers in the active view have data-mermaid-src set.
+   *  Falls back to vault reading when the editor is unavailable (reading mode). */
+  async fillSourceCodes() {
+    const view = this.app.workspace.getActiveViewOfType(import_obsidian4.MarkdownView);
+    if (!view)
+      return;
+    const sourcePath = view.file?.path ?? "";
+    const containers = view.containerEl.querySelectorAll(this.MERMAID_SELECTORS);
+    if (containers.length === 0)
+      return;
+    let codes = this.readAllEditorBlocks(sourcePath);
+    if (codes.length === 0) {
+      codes = await this.readBlocksFromVault(sourcePath);
+    }
+    if (codes.length === 0)
+      return;
+    let pos = 0;
+    for (const c of containers) {
+      if (c.closest("." + CLASSES.CANVAS_WRAPPER)) {
+        pos++;
+        continue;
+      }
+      if (c.closest("." + CLASSES.SPLIT_MODAL)) {
+        pos++;
+        continue;
+      }
+      if (pos < codes.length && !c.getAttribute("data-mermaid-src")) {
+        c.setAttribute("data-mermaid-src", codes[pos]);
+      }
+      pos++;
+    }
   }
   scanActiveView() {
     const view = this.app.workspace.getActiveViewOfType(import_obsidian4.MarkdownView);
@@ -760,6 +790,8 @@ var MermaidCanvasPlugin = class extends import_obsidian4.Plugin {
         count++;
       }
     }
+    if (count > 0)
+      this.fillSourceCodes();
     return count;
   }
   scheduleRetryScan(delay = 200) {
@@ -809,16 +841,8 @@ var MermaidCanvasPlugin = class extends import_obsidian4.Plugin {
     const h = parseFloat(svg.getAttribute("height") || "0");
     if (w < 10 && h < 10)
       return;
-    const attrCode = container.getAttribute("data-mermaid-src") ?? "";
-    const blockIdx = this.computeIdxForContainer(container);
-    const editorCodes = this.readAllEditorBlocks(sourcePath);
-    console.log("[MermaidCanvas] enhanceBlock: attrCode=", attrCode, "blockIdx=", blockIdx, "editorCodes=", editorCodes);
-    const srcCode = attrCode || (blockIdx >= 0 && blockIdx < editorCodes.length ? editorCodes[blockIdx] : "");
     try {
-      const cv = new CanvasView(container, {
-        zoomSensitivity: this.getEffectiveSensitivity(),
-        getSourceCode: async () => srcCode
-      });
+      const cv = new CanvasView(container, { zoomSensitivity: this.getEffectiveSensitivity() });
       cv.mount(svg);
       if (!cv.getWrapper())
         return;
@@ -828,12 +852,6 @@ var MermaidCanvasPlugin = class extends import_obsidian4.Plugin {
     }
   }
   /** Find the index of this container among all mermaid blocks (even inside wrappers) */
-  computeIdxForContainer(container) {
-    const sel = container.matches(".cm-lang-mermaid") ? ".cm-lang-mermaid" : this.MERMAID_SELECTORS;
-    const all = [...document.querySelectorAll(sel)];
-    all.sort((a, b) => a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1);
-    return all.indexOf(container);
-  }
   // ─── Edit via button interception ──────────────────────────────
   editBySource(srcCode, sourcePath, blockIdx) {
     const view = this.app.workspace.getActiveViewOfType(import_obsidian4.MarkdownView);

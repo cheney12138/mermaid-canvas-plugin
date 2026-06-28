@@ -1,0 +1,9 @@
+node_modules/
+*.js
+*.js.map
+.DS_Store
+.idea/
+.claude/
+AGENTS.md
+CLAUDE.md
+.gitnexus/
