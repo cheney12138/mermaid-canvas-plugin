@@ -40,6 +40,14 @@
   cursor: grabbing;
 }
 
+/* Hide Obsidian's native code block buttons inside our canvas */
+.mermaid-canvas-wrapper .edit-block-button,
+.mermaid-canvas-wrapper .copy-code-button,
+.mermaid-canvas-wrapper button[aria-label="Open code"],
+.mermaid-canvas-wrapper .code-block-flair {
+  display: none !important;
+}
+
 /* Placeholder / error messages */
 .mermaid-canvas-placeholder {
   color: var(--text-muted);
