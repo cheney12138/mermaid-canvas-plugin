@@ -73,6 +73,7 @@ export default class MermaidCanvasPlugin extends Plugin {
 
       let srcCode = container.getAttribute('data-mermaid-src') ?? '';
       let blockIdx = -1;
+      console.log('[MermaidCanvas] editBtn: srcCode=', srcCode, 'container=', container.tagName, container.className);
       if (!srcCode) {
         const all = [...document.querySelectorAll<HTMLElement>(this.LIVE_SELECTORS)]
           .filter(el => !el.closest('.' + CLASSES.CANVAS_WRAPPER));
@@ -81,6 +82,8 @@ export default class MermaidCanvasPlugin extends Plugin {
         const codes = this.readAllEditorBlocks(
           this.app.workspace.getActiveViewOfType(MarkdownView)?.file?.path ?? ''
         );
+        console.log('[MermaidCanvas]   fallback: idx=', idx, 'codesLen=', codes.length, 'allLen=', all.length,
+          'allElements=', all.map(e => e.tagName + '.' + e.className.substring(0, 40)));
         if (idx >= 0 && idx < codes.length) { srcCode = codes[idx]; blockIdx = idx; }
       }
       const sourcePath = this.app.workspace.getActiveViewOfType(MarkdownView)?.file?.path ?? '';
@@ -255,7 +258,35 @@ export default class MermaidCanvasPlugin extends Plugin {
     try {
       const cv = new CanvasView(container, { zoomSensitivity: this.getEffectiveSensitivity() });
       cv.mount(svg);
-      if (!cv.getWrapper()) return;
+      // Copy + Delete: compute block position in full document
+      const all = [...document.querySelectorAll<HTMLElement>(this.MERMAID_SELECTORS)];
+      all.sort((a, b) => a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1);
+      const blockIdx = all.indexOf(container);
+
+      let copyCode = container.getAttribute('data-mermaid-src') ?? '';
+      if (!copyCode) {
+        const codes = this.readAllEditorBlocks(sourcePath);
+        if (blockIdx >= 0 && blockIdx < codes.length) copyCode = codes[blockIdx];
+      }
+      cv.setSourceCode(copyCode);
+
+      (cv as any).options.onDelete = () => {
+        if (blockIdx < 0) return;
+        const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+        if (view?.editor) {
+          const regex = /```mermaid\n[\s\S]*?```/g;
+          let m: RegExpExecArray | null; let i = 0;
+          while ((m = regex.exec(view.editor.getValue())) !== null) {
+            if (i === blockIdx) {
+              view.editor.replaceRange('',
+                view.editor.offsetToPos(m.index),
+                view.editor.offsetToPos(m.index + m[0].length));
+              return;
+            }
+            i++;
+          }
+        }
+      };
       this.canvasViews.add(cv);
     } catch (err) {
       console.warn('Mermaid Canvas: enhance failed', err);

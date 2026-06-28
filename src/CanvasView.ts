@@ -1,8 +1,9 @@
-import { setIcon, MarkdownRenderer, Component } from 'obsidian';
+import { setIcon, MarkdownRenderer, Component, Notice } from 'obsidian';
 import { CLASSES, DEFAULT_SETTINGS } from './constants';
 
 export interface CanvasOptions {
   zoomSensitivity: number;
+  onDelete?: () => void;
 }
 
 /**
@@ -23,6 +24,7 @@ export class CanvasView {
   private content!: HTMLElement;
   private controlBar!: HTMLElement;
   private svgEl!: HTMLElement;
+  private sourceCode = '';
 
   // Transform state (kept in memory, not read from DOM)
   private scale = 1;
@@ -335,6 +337,8 @@ export class CanvasView {
       { icon: 'zoom-out', title: 'Zoom Out', action: () => this.zoomOut() },
       { icon: 'maximize', title: 'Fullscreen', action: () => this.enterFullscreen() },
       { icon: 'crop', title: 'Fit to canvas', action: () => this.fitToCanvas() },
+      { icon: 'copy', title: 'Copy code', action: () => this.copyCode() },
+      { icon: 'trash', title: 'Delete diagram', action: () => this.deleteBlock() },
     ];
 
     for (const { icon, title, action } of buttons) {
@@ -500,6 +504,16 @@ export class CanvasView {
     this.applyTransform();
   }
 
+  copyCode(): void {
+    if (this.sourceCode) {
+      navigator.clipboard.writeText(this.sourceCode).then(() => {
+        new Notice('Mermaid code copied');
+      }).catch(() => new Notice('Copy failed'));
+    } else {
+      new Notice('No code to copy');
+    }
+  }
+
   /** @deprecated Use fitToCanvas() instead */
   reset(): void {
     this.fitToCanvas();
@@ -526,6 +540,8 @@ export class CanvasView {
   }
 
   /** Get the wrapper element (for embedding) */
+  setSourceCode(code: string): void { this.sourceCode = code; }
+  deleteBlock(): void { this.options.onDelete?.(); }
   getWrapper(): HTMLElement {
     return this.wrapper;
   }
