@@ -1,0 +1,279 @@
+/* ═══════════════════════════════════════════════════════════════
+   Mermaid Canvas — Styles
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Canvas Wrapper (inline in notes) ──────────────────────── */
+
+.mermaid-canvas-wrapper {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  cursor: grab;
+  border-radius: 6px;
+  max-height: 80vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: inset 0 0 0 1px var(--background-modifier-border), 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.mermaid-canvas-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  will-change: transform;
+}
+
+.mermaid-canvas-content > * {
+  max-width: none !important;
+  max-height: none !important;
+}
+
+.mermaid-canvas-content svg {
+  display: block;
+  max-width: none !important;
+  max-height: none !important;
+  height: auto;
+}
+
+.mermaid-canvas-wrapper.dragging {
+  cursor: grabbing;
+}
+
+/* Placeholder / error messages */
+.mermaid-canvas-placeholder {
+  color: var(--text-muted);
+  font-style: italic;
+  padding: 40px 20px;
+  text-align: center;
+}
+
+.mermaid-canvas-error {
+  color: var(--text-error);
+  padding: 20px;
+  text-align: center;
+}
+
+/* ── Control Bar ───────────────────────────────────────────── */
+
+.mermaid-canvas-controls {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  z-index: 10;
+  background: var(--background-primary);
+  border-radius: 6px;
+  padding: 3px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  border: 1px solid var(--background-modifier-border);
+}
+
+.mermaid-canvas-wrapper:hover .mermaid-canvas-controls {
+  opacity: 1;
+}
+
+.mermaid-canvas-btn {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--text-muted);
+  padding: 2px;
+}
+
+.mermaid-canvas-btn:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+.mermaid-canvas-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* ── Fullscreen Overlay ────────────────────────────────────── */
+
+.mermaid-canvas-fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  background: var(--background-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mermaid-canvas-fs-inner {
+  width: 95vw;
+  height: 95vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.mermaid-canvas-fs-inner .mermaid-canvas-wrapper {
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  border-radius: 0;
+}
+
+.mermaid-canvas-fs-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10001;
+}
+
+.mermaid-canvas-fs-close:hover {
+  background: var(--background-modifier-active-hover);
+}
+
+/* ── Split Modal ───────────────────────────────────────────── */
+
+/* The contentEl itself (IS .mermaid-canvas-split) */
+.mermaid-canvas-split {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 0 !important;
+  overflow: hidden;
+}
+
+/* Toolbar */
+.mermaid-canvas-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--background-modifier-border);
+  flex-shrink: 0;
+}
+
+.mermaid-canvas-title {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text-normal);
+}
+
+.mermaid-canvas-toolbar .mermaid-canvas-btn {
+  font-size: 12px;
+  width: auto;
+  padding: 4px 12px;
+}
+
+/* Main area: flex row */
+.mermaid-canvas-main {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* Left panel: code editor */
+.mermaid-canvas-left {
+  flex: 1;
+  min-width: 200px;
+  border-right: 1px solid var(--background-modifier-border);
+  display: flex;
+}
+
+.mermaid-canvas-textarea {
+  flex: 1;
+  width: 100%;
+  padding: 16px;
+  border: none;
+  outline: none;
+  resize: none;
+  font-family: var(--font-monospace);
+  font-size: 13px;
+  line-height: 1.6;
+  tab-size: 4;
+  background: var(--background-primary);
+  color: var(--text-normal);
+}
+
+.mermaid-canvas-textarea::placeholder {
+  color: var(--text-faint);
+}
+
+.mermaid-canvas-textarea:focus {
+  box-shadow: none;
+}
+
+/* Right panel: preview */
+.mermaid-canvas-right {
+  flex: 1;
+  min-width: 200px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--background-secondary);
+}
+
+.mermaid-canvas-right .mermaid-canvas-wrapper {
+  width: 100%;
+  height: 100%;
+  border-radius: 0;
+  background: transparent;
+}
+
+/* Preview-only mode: hide left panel */
+.mermaid-canvas-main.preview-only .mermaid-canvas-left {
+  display: none;
+}
+
+.mermaid-canvas-main.preview-only .mermaid-canvas-right {
+  flex: 1;
+}
+
+/* ── Rendering target in split modal ──────────────────────── */
+
+.mermaid-canvas-render-target {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mermaid-canvas-render-target svg {
+  max-width: none !important;
+  max-height: none !important;
+}
+
+/* ── Dark theme tweaks ──────────────────────────────────────── */
+
+.theme-dark .mermaid-canvas-controls {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.theme-dark .mermaid-canvas-fs-close {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.theme-dark .mermaid-canvas-fs-close:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+
