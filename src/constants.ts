@@ -16,11 +16,9 @@ export const CLASSES = {
   SPLIT_TOOLBAR: 'mermaid-canvas-toolbar',
 } as const;
 
-// Default settings
-export const DEFAULT_SETTINGS = {
+// CanvasView internal defaults (physical units, not UI slider values)
+export const CANVAS_DEFAULTS = {
   zoomSensitivity: 0.0006, // scale change per deltaY pixel
-  defaultSplitView: true,
-  mermaidTheme: 'default' as const,
 } as const;
 
 // Sensitivity multiplier (user-facing: 1-10 mapped to 0.0002-0.002)

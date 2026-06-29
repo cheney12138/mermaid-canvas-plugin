@@ -224,6 +224,7 @@ export default class MermaidCanvasPlugin extends Plugin {
     let count = 0;
     for (const c of containers) {
       if (c.closest('.' + CLASSES.CANVAS_WRAPPER)) continue;
+      if (c.querySelector('.' + CLASSES.CANVAS_WRAPPER)) continue;
       if (c.closest('.' + CLASSES.SPLIT_MODAL)) continue;
       if (c.querySelector('svg')) { this.enhanceBlock(c, sourcePath); count++; }
     }
@@ -312,6 +313,7 @@ export default class MermaidCanvasPlugin extends Plugin {
   private enhanceBlock(container: HTMLElement, sourcePath: string): void {
     if (!container.isConnected) return;
     if (container.closest('.' + CLASSES.CANVAS_WRAPPER)) return;
+    if (container.querySelector('.' + CLASSES.CANVAS_WRAPPER)) return;
     const svg = container.querySelector('svg');
     if (!svg) return;
     const w = parseFloat(svg.getAttribute('width') || '0');
@@ -345,21 +347,28 @@ export default class MermaidCanvasPlugin extends Plugin {
       cv.setSourceCode(copyCode);
 
       if (!copyCode) {
-        // Try data-line first — most reliable in reading mode
+        const applyVaultFallback = (codes: string[]) => {
+          if (codes.length === 0) return;
+          // blockIdx if valid; when there's only one block it's unambiguous
+          const idx = (blockIdx >= 0 && blockIdx < codes.length) ? blockIdx
+                    : codes.length === 1 ? 0 : -1;
+          if (idx >= 0) cv.setSourceCode(codes[idx]);
+        };
+
+        // Try data-line first — precise line-based lookup for reading mode
         const lineAttr = container.closest('[data-line]')?.getAttribute('data-line');
         const lineNum = lineAttr !== undefined ? parseInt(lineAttr) : -1;
         if (lineNum >= 0) {
           this.readBlockFromVaultByLine(sourcePath, lineNum).then(code => {
-            if (code) cv.setSourceCode(code);
+            if (code) { cv.setSourceCode(code); return; }
+            this.readBlocksFromVault(sourcePath).then(applyVaultFallback);
           });
         } else {
-          this.readBlocksFromVault(sourcePath).then(codes => {
-            if (blockIdx >= 0 && blockIdx < codes.length) cv.setSourceCode(codes[blockIdx]);
-          });
+          this.readBlocksFromVault(sourcePath).then(applyVaultFallback);
         }
       }
 
-      (cv as any).options.onDelete = () => {
+      cv.setOnDelete(() => {
         if (blockIdx < 0) return;
         const view = this.app.workspace.getActiveViewOfType(MarkdownView);
         if (view?.editor) {
@@ -375,7 +384,7 @@ export default class MermaidCanvasPlugin extends Plugin {
             i++;
           }
         }
-      };
+      });
       this.canvasViews.add(cv);
     } catch (err) {
       console.warn('Mermaid Canvas: enhance failed', err);

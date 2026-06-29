@@ -1,5 +1,5 @@
 import { setIcon, MarkdownRenderer, Component } from 'obsidian';
-import { CLASSES, DEFAULT_SETTINGS } from './constants';
+import { CLASSES, CANVAS_DEFAULTS } from './constants';
 
 export interface CanvasOptions {
   zoomSensitivity: number;
@@ -155,7 +155,6 @@ export class CanvasView {
   private onMouseDown: (e: MouseEvent) => void;
   private onMouseMove: (e: MouseEvent) => void;
   private onMouseUp: (e: MouseEvent) => void;
-  private onKeyDown: (e: KeyboardEvent) => void;
 
   // Obsidian component for MarkdownRenderer (used in split modal context)
   private mdComponent: Component | null = null;
@@ -165,13 +164,12 @@ export class CanvasView {
 
   constructor(container: HTMLElement, options?: Partial<CanvasOptions>) {
     this.container = container;
-    this.options = { zoomSensitivity: DEFAULT_SETTINGS.zoomSensitivity, ...options };
+    this.options = { zoomSensitivity: CANVAS_DEFAULTS.zoomSensitivity, ...options };
 
     this.onWheel = this.handleWheel.bind(this);
     this.onMouseDown = this.handleMouseDown.bind(this);
     this.onMouseMove = this.handleMouseMove.bind(this);
     this.onMouseUp = this.handleMouseUp.bind(this);
-    this.onKeyDown = this.handleKeyDown.bind(this);
   }
 
   /** Wrap an already-rendered SVG element (inline reading-view usage) */
@@ -512,14 +510,18 @@ export class CanvasView {
       return;
     }
 
-    // Fit with 10% padding, min scale 0.3
-    const pad = 1.0;
-    const scaleX = (viewW * pad) / svgW;
-    const scaleY = (viewH * pad) / svgH;
+    const scaleX = viewW / svgW;
+    const scaleY = viewH / svgH;
     this.scale = Math.max(0.3, Math.min(scaleX, scaleY, 5));
     this.tx = 0;
     this.ty = 0;
     this.applyTransform();
+
+    // In inline view, shrink wrapper to the rendered SVG height so there's no dead vertical space.
+    // Fullscreen keeps its own sizing; height is saved/restored by enterFullscreen/exitFullscreen.
+    if (!isFs) {
+      this.wrapper.style.height = Math.ceil(svgH * this.scale + 24) + 'px';
+    }
   }
 
   copyCode(): void {
@@ -548,13 +550,6 @@ export class CanvasView {
     this.fitToCanvas();
   }
 
-  // ─── Keyboard handler ─────────────────────────────────────────
-
-  private handleKeyDown(_e: KeyboardEvent): void {
-    // Fullscreen escape is handled via fullscreenKeyDown (registered per-instance).
-    // Kept as no-op for interface consistency; real key handling is in fullscreenKeyDown.
-  }
-
   // ─── Apply CSS transform ──────────────────────────────────────
 
   private applyTransform(): void {
@@ -570,6 +565,7 @@ export class CanvasView {
 
   /** Get the wrapper element (for embedding) */
   setSourceCode(code: string): void { this.sourceCode = code; }
+  setOnDelete(fn: (() => void) | undefined): void { this.options.onDelete = fn; }
   deleteBlock(): void { this.options.onDelete?.(); }
   getWrapper(): HTMLElement {
     return this.wrapper;

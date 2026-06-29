@@ -1,6 +1,6 @@
 import { App, Modal } from 'obsidian';
 import { CanvasView } from './CanvasView';
-import { CLASSES, DEFAULT_SETTINGS, RENDER_DEBOUNCE } from './constants';
+import { CLASSES, RENDER_DEBOUNCE } from './constants';
 
 export interface SplitModalOptions {
   initialCode: string;
@@ -22,7 +22,7 @@ export class SplitModal extends Modal {
   private rightPanel!: HTMLElement;
   private renderTimer: ReturnType<typeof setTimeout> | null = null;
   private splitView = true;
-  private dirty = false;
+  private saved = false;
 
   constructor(app: App, options: SplitModalOptions) {
     super(app);
@@ -51,7 +51,6 @@ export class SplitModal extends Modal {
     const toolbar = contentEl.createDiv({ cls: CLASSES.SPLIT_TOOLBAR });
     toolbar.createEl('span', { text: 'Mermaid Canvas', cls: 'mermaid-canvas-title' });
 
-    // Toggle button: hidden when forced preview-only (reading mode)
     if (!this.options.startInPreviewOnly) {
       const toggleBtn = toolbar.createEl('button', {
         text: 'Preview Only',
@@ -63,6 +62,27 @@ export class SplitModal extends Modal {
         toggleBtn.textContent = this.splitView ? 'Preview Only' : 'Split View';
         this.applyViewMode();
       });
+
+      if (this.options.onSave) {
+        const actions = toolbar.createDiv({ cls: 'mermaid-canvas-actions' });
+
+        const cancelBtn = actions.createEl('button', {
+          text: 'Cancel',
+          cls: CLASSES.CONTROL_BTN,
+          title: 'Discard changes',
+        });
+        cancelBtn.addEventListener('click', () => this.close());
+
+        const saveBtn = actions.createEl('button', {
+          text: 'Save',
+          cls: CLASSES.CONTROL_BTN + ' mermaid-canvas-btn-primary',
+          title: 'Save changes',
+        });
+        saveBtn.addEventListener('click', () => {
+          this.saved = true;
+          this.close();
+        });
+      }
     }
 
     // ── Main area ──
@@ -88,7 +108,6 @@ export class SplitModal extends Modal {
 
     // Live preview on input (only meaningful in split view)
     this.textarea.addEventListener('input', () => {
-      this.dirty = true;
       this.scheduleRender();
     });
 
@@ -118,13 +137,9 @@ export class SplitModal extends Modal {
   }
 
   onClose(): void {
-    // Only save if the user actually modified the code (and onSave is provided)
-    if (this.dirty && this.options.onSave) {
-      const finalCode = this.textarea?.value ?? this.options.initialCode;
-      this.options.onSave(finalCode);
+    if (this.saved && this.options.onSave) {
+      this.options.onSave(this.textarea?.value ?? this.options.initialCode);
     }
-
-    // Cleanup
     if (this.renderTimer) clearTimeout(this.renderTimer);
     this.canvasView?.destroy();
     this.contentEl.empty();

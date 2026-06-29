@@ -190,6 +190,20 @@
   padding: 4px 12px;
 }
 
+.mermaid-canvas-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.mermaid-canvas-btn-primary {
+  background: var(--interactive-accent) !important;
+  color: var(--text-on-accent) !important;
+}
+
+.mermaid-canvas-btn-primary:hover {
+  background: var(--interactive-accent-hover) !important;
+}
+
 /* Main area: flex row */
 .mermaid-canvas-main {
   display: flex;
