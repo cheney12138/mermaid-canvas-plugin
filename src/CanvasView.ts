@@ -1,9 +1,10 @@
-import { setIcon, MarkdownRenderer, Component, Notice } from 'obsidian';
+import { setIcon, MarkdownRenderer, Component } from 'obsidian';
 import { CLASSES, DEFAULT_SETTINGS } from './constants';
 
 export interface CanvasOptions {
   zoomSensitivity: number;
   onDelete?: () => void;
+  readOnly?: boolean;
 }
 
 /**
@@ -37,6 +38,9 @@ export class CanvasView {
   private dragStartY = 0;
   private dragStartTx = 0;
   private dragStartTy = 0;
+
+  // IntersectionObserver for deferred fitToCanvas when block is off-screen at mount time
+  private visibilityObserver: IntersectionObserver | null = null;
 
   // Fullscreen state
   private fullscreenOverlay: HTMLElement | null = null;
@@ -179,8 +183,21 @@ export class CanvasView {
       return;
     }
     this.bindEvents();
-    // Default: fit diagram to available canvas width
-    this.fitToCanvas();
+
+    // If the wrapper is already visible, fit immediately; otherwise defer until
+    // it scrolls into view (wrapper has zero dimensions when off-screen).
+    if (this.wrapper.getBoundingClientRect().width > 0) {
+      this.fitToCanvas();
+    } else {
+      this.visibilityObserver = new IntersectionObserver((entries, observer) => {
+        if (entries[0]?.isIntersecting) {
+          observer.disconnect();
+          this.visibilityObserver = null;
+          requestAnimationFrame(() => this.fitToCanvas());
+        }
+      }, { threshold: 0 });
+      this.visibilityObserver.observe(this.wrapper);
+    }
   }
 
   /** Render mermaid code to SVG, then mount (split-modal usage) */
@@ -338,7 +355,7 @@ export class CanvasView {
       { icon: 'maximize', title: 'Fullscreen', action: () => this.enterFullscreen() },
       { icon: 'crop', title: 'Fit to canvas', action: () => this.fitToCanvas() },
       { icon: 'copy', title: 'Copy code', action: () => this.copyCode() },
-      { icon: 'trash', title: 'Delete diagram', action: () => this.deleteBlock() },
+      ...(!this.options.readOnly ? [{ icon: 'trash', title: 'Delete diagram', action: () => this.deleteBlock() }] : []),
     ];
 
     for (const { icon, title, action } of buttons) {
@@ -361,8 +378,9 @@ export class CanvasView {
 
   /** Remove all event listeners */
   destroy(): void {
-    // Exit fullscreen first (restores wrapper to original parent)
     this.exitFullscreen();
+    this.visibilityObserver?.disconnect();
+    this.visibilityObserver = null;
     this.wrapper?.removeEventListener('wheel', this.onWheel);
     this.wrapper?.removeEventListener('mousedown', this.onMouseDown);
     document.removeEventListener('mousemove', this.onMouseMove);
@@ -506,12 +524,23 @@ export class CanvasView {
 
   copyCode(): void {
     if (this.sourceCode) {
-      navigator.clipboard.writeText(this.sourceCode).then(() => {
-        new Notice('Mermaid code copied');
-      }).catch(() => new Notice('Copy failed'));
+      navigator.clipboard.writeText(this.sourceCode)
+        .then(() => this.showToast('Mermaid code copied'))
+        .catch(() => this.showToast('Copy failed'));
     } else {
-      new Notice('No code to copy');
+      this.showToast('No code to copy');
     }
+  }
+
+  private showToast(message: string): void {
+    const toast = document.createElement('div');
+    toast.className = 'mermaid-canvas-toast';
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    setTimeout(() => {
+      toast.classList.add('mermaid-canvas-toast-hide');
+      setTimeout(() => toast.remove(), 300);
+    }, 1700);
   }
 
   /** @deprecated Use fitToCanvas() instead */

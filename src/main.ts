@@ -152,6 +152,27 @@ export default class MermaidCanvasPlugin extends Plugin {
   }
 
   /** Read mermaid blocks from vault file (fallback when editor is unavailable, e.g. reading mode) */
+  /** Read the mermaid code block whose opening fence is at `lineNum` (0-indexed). */
+  private async readBlockFromVaultByLine(sourcePath: string, lineNum: number): Promise<string> {
+    try {
+      const file = this.app.vault.getAbstractFileByPath(sourcePath);
+      if (!file) return '';
+      const content = await this.app.vault.cachedRead(file as import('obsidian').TFile);
+      const lines = content.split('\n');
+      // lineNum points to the ```mermaid fence; search a few lines around it for safety
+      for (let i = Math.max(0, lineNum - 1); i <= Math.min(lineNum + 3, lines.length - 1); i++) {
+        if (lines[i].trim() === '```mermaid') {
+          const codeLines: string[] = [];
+          for (let j = i + 1; j < lines.length; j++) {
+            if (lines[j].trimEnd() === '```') return codeLines.join('\n');
+            codeLines.push(lines[j]);
+          }
+        }
+      }
+    } catch { /* file not readable */ }
+    return '';
+  }
+
   private async readBlocksFromVault(sourcePath: string): Promise<string[]> {
     const codes: string[] = [];
     try {
@@ -171,7 +192,10 @@ export default class MermaidCanvasPlugin extends Plugin {
     const view = this.app.workspace.getActiveViewOfType(MarkdownView);
     if (!view) return;
     const sourcePath = view.file?.path ?? '';
-    const containers = view.containerEl.querySelectorAll<HTMLElement>(this.MERMAID_SELECTORS);
+    // Only count outermost unwrapped containers (same logic as enhanceBlock)
+    const containers = [...view.containerEl.querySelectorAll<HTMLElement>(this.MERMAID_SELECTORS)]
+      .filter(el => !el.closest('.' + CLASSES.CANVAS_WRAPPER) &&
+                    !el.parentElement?.closest(this.MERMAID_SELECTORS));
     if (containers.length === 0) return;
 
     // Try editor first (live preview / source mode), then vault (reading mode)
@@ -286,6 +310,8 @@ export default class MermaidCanvasPlugin extends Plugin {
   // ─── Enhance ───────────────────────────────────────────────────
 
   private enhanceBlock(container: HTMLElement, sourcePath: string): void {
+    if (!container.isConnected) return;
+    if (container.closest('.' + CLASSES.CANVAS_WRAPPER)) return;
     const svg = container.querySelector('svg');
     if (!svg) return;
     const w = parseFloat(svg.getAttribute('width') || '0');
@@ -293,19 +319,45 @@ export default class MermaidCanvasPlugin extends Plugin {
     if (w < 10 && h < 10) return;
 
     try {
-      const cv = new CanvasView(container, { zoomSensitivity: this.getEffectiveSensitivity() });
-      cv.mount(svg);
-      // Copy + Delete: compute block position in full document
-      const all = [...document.querySelectorAll<HTMLElement>(this.MERMAID_SELECTORS)];
-      all.sort((a, b) => a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1);
-      const blockIdx = all.indexOf(container);
+      // blockIdx: count only unwrapped outermost containers in the same document,
+      // used for onDelete. Source code is retrieved separately via data-line or editor.
+      const searchRoot = container.ownerDocument.body;
+      const rawContainers = [...searchRoot.querySelectorAll<HTMLElement>(this.MERMAID_SELECTORS)]
+        .filter(el => !el.closest('.' + CLASSES.CANVAS_WRAPPER) &&
+                      !el.parentElement?.closest(this.MERMAID_SELECTORS));
+      rawContainers.sort((a, b) => a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1);
+      const blockIdx = rawContainers.indexOf(container);
 
+      // Source code priority:
+      // 1. data-mermaid-src (set by fillSourceCodes for live-preview)
+      // 2. editor content (live-preview / source mode)
+      // 3. data-line → precise vault line lookup (reading mode)
+      // 4. index-based vault fallback
       let copyCode = container.getAttribute('data-mermaid-src') ?? '';
       if (!copyCode) {
         const codes = this.readAllEditorBlocks(sourcePath);
         if (blockIdx >= 0 && blockIdx < codes.length) copyCode = codes[blockIdx];
       }
+
+      const readOnly = !!container.closest('.markdown-preview-view');
+      const cv = new CanvasView(container, { zoomSensitivity: this.getEffectiveSensitivity(), readOnly });
+      cv.mount(svg);
       cv.setSourceCode(copyCode);
+
+      if (!copyCode) {
+        // Try data-line first — most reliable in reading mode
+        const lineAttr = container.closest('[data-line]')?.getAttribute('data-line');
+        const lineNum = lineAttr !== undefined ? parseInt(lineAttr) : -1;
+        if (lineNum >= 0) {
+          this.readBlockFromVaultByLine(sourcePath, lineNum).then(code => {
+            if (code) cv.setSourceCode(code);
+          });
+        } else {
+          this.readBlocksFromVault(sourcePath).then(codes => {
+            if (blockIdx >= 0 && blockIdx < codes.length) cv.setSourceCode(codes[blockIdx]);
+          });
+        }
+      }
 
       (cv as any).options.onDelete = () => {
         if (blockIdx < 0) return;
