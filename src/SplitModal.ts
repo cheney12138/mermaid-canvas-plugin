@@ -62,38 +62,38 @@ export class SplitModal extends Modal {
         toggleBtn.textContent = this.splitView ? 'Preview Only' : 'Split View';
         this.applyViewMode();
       });
-
-      if (this.options.onSave) {
-        const actions = toolbar.createDiv({ cls: 'mermaid-canvas-actions' });
-
-        const cancelBtn = actions.createEl('button', {
-          text: 'Cancel',
-          cls: CLASSES.CONTROL_BTN,
-          title: 'Discard changes',
-        });
-        cancelBtn.addEventListener('click', () => this.close());
-
-        const saveBtn = actions.createEl('button', {
-          text: 'Save',
-          cls: CLASSES.CONTROL_BTN + ' mermaid-canvas-btn-primary',
-          title: 'Save changes',
-        });
-        saveBtn.addEventListener('click', () => {
-          this.saved = true;
-          this.close();
-        });
-      }
     }
 
     // ── Main area ──
     const main = contentEl.createDiv({ cls: 'mermaid-canvas-main' });
 
-    // Left: code editor
+    // Left: code editor + action buttons
     const leftPanel = main.createDiv({ cls: CLASSES.SPLIT_LEFT });
     this.textarea = leftPanel.createEl('textarea', { cls: 'mermaid-canvas-textarea' });
     this.textarea.value = this.options.initialCode;
     this.textarea.setAttribute('spellcheck', 'false');
     this.textarea.setAttribute('placeholder', 'Enter Mermaid code here...\n\ne.g.\ngraph TD\n    A-->B\n    B-->C');
+
+    if (!this.options.startInPreviewOnly && this.options.onSave) {
+      const footer = leftPanel.createDiv({ cls: 'mermaid-canvas-left-footer' });
+
+      const cancelBtn = footer.createEl('button', {
+        text: 'Cancel',
+        cls: CLASSES.CONTROL_BTN,
+        title: 'Discard changes',
+      });
+      cancelBtn.addEventListener('click', () => this.close());
+
+      const saveBtn = footer.createEl('button', {
+        text: 'Save',
+        cls: CLASSES.CONTROL_BTN + ' mermaid-canvas-btn-primary',
+        title: 'Save changes',
+      });
+      saveBtn.addEventListener('click', () => {
+        this.saved = true;
+        this.close();
+      });
+    }
 
     // Right: preview canvas
     this.rightPanel = main.createDiv({ cls: CLASSES.SPLIT_RIGHT });

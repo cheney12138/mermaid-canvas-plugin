@@ -24,6 +24,7 @@ export class CanvasView {
   private wrapper!: HTMLElement;
   private content!: HTMLElement;
   private controlBar!: HTMLElement;
+  private exportBar!: HTMLElement;
   private svgEl!: HTMLElement;
   private sourceCode = '';
 
@@ -204,6 +205,7 @@ export class CanvasView {
     this.content = this.wrapper.createDiv({ cls: CLASSES.CANVAS_CONTENT });
     this.controlBar = this.wrapper.createDiv({ cls: CLASSES.CONTROL_BAR });
     this.buildControlButtons();
+    this.buildExportBar();
     this.bindEvents();
 
     await this.renderCode(code, sourcePath);
@@ -337,9 +339,10 @@ export class CanvasView {
     const foundSvg = mermaidContainer.querySelector('svg');
     if (foundSvg) this.svgEl = foundSvg as unknown as HTMLElement;
 
-    // Build control bar
+    // Build control bar and export bar
     this.controlBar = this.wrapper.createDiv({ cls: CLASSES.CONTROL_BAR });
     this.buildControlButtons();
+    this.buildExportBar();
 
     return true;
   }
@@ -363,6 +366,19 @@ export class CanvasView {
         e.stopPropagation();
         action();
       });
+    }
+  }
+
+  private buildExportBar(): void {
+    this.exportBar = this.wrapper.createDiv({ cls: CLASSES.EXPORT_BAR });
+    const btns = [
+      { icon: 'image',    title: 'Export PNG', action: () => this.exportPng() },
+      { icon: 'download', title: 'Export SVG', action: () => this.exportSvg() },
+    ];
+    for (const { icon, title, action } of btns) {
+      const btn = this.exportBar.createEl('button', { cls: CLASSES.CONTROL_BTN, title });
+      setIcon(btn, icon);
+      btn.addEventListener('click', (e) => { e.stopPropagation(); action(); });
     }
   }
 
@@ -532,6 +548,61 @@ export class CanvasView {
     } else {
       this.showToast('No code to copy');
     }
+  }
+
+  exportSvg(): void {
+    if (!this.svgEl) { this.showToast('No diagram to export'); return; }
+    const rect = this.svgEl.getBoundingClientRect();
+    const clone = this.svgEl.cloneNode(true) as SVGElement;
+    if (!clone.getAttribute('width')) clone.setAttribute('width', String(rect.width || 800));
+    if (!clone.getAttribute('height')) clone.setAttribute('height', String(rect.height || 600));
+    const svgStr = new XMLSerializer().serializeToString(clone);
+    this.download('diagram.svg', svgStr, 'image/svg+xml;charset=utf-8');
+    this.showToast('SVG exported');
+  }
+
+  exportPng(): void {
+    if (!this.svgEl) { this.showToast('No diagram to export'); return; }
+    const rect = this.svgEl.getBoundingClientRect();
+    const w = rect.width || 800;
+    const h = rect.height || 600;
+    const clone = this.svgEl.cloneNode(true) as SVGElement;
+    clone.setAttribute('width', String(w));
+    clone.setAttribute('height', String(h));
+    const svgStr = new XMLSerializer().serializeToString(clone);
+    const blob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+    img.onload = () => {
+      const scale = 2;
+      const canvas = document.createElement('canvas');
+      canvas.width = w * scale; canvas.height = h * scale;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) { this.showToast('Export failed'); URL.revokeObjectURL(url); return; }
+      ctx.scale(scale, scale);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, w, h);
+      ctx.drawImage(img, 0, 0, w, h);
+      URL.revokeObjectURL(url);
+      canvas.toBlob(png => {
+        if (!png) { this.showToast('Export failed'); return; }
+        this.download('diagram.png', png);
+        this.showToast('PNG exported');
+      }, 'image/png');
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); this.showToast('Export failed'); };
+    img.src = url;
+  }
+
+  private download(filename: string, content: string | Blob, mimeType?: string): void {
+    const blob = content instanceof Blob
+      ? content
+      : new Blob([content], { type: mimeType ?? 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
   private showToast(message: string): void {

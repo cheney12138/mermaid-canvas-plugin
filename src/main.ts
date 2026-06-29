@@ -426,6 +426,7 @@ export default class MermaidCanvasPlugin extends Plugin {
           this.cleanupDetached();
           this.setupObserver();
           this.scheduleRetryScan(300);
+          (view as any)?.previewMode?.rerender(true);
         }, 300);
       },
     }).open();

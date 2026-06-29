@@ -7,6 +7,8 @@ export const CLASSES = {
   // Control bar overlay
   CONTROL_BAR: 'mermaid-canvas-controls',
   CONTROL_BTN: 'mermaid-canvas-btn',
+  // Export bar (bottom-center, shown on hover)
+  EXPORT_BAR: 'mermaid-canvas-export-bar',
   // Fullscreen overlay
   FULLSCREEN_OVERLAY: 'mermaid-canvas-fullscreen',
   // Split modal

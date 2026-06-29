@@ -84,6 +84,29 @@
   opacity: 1;
 }
 
+/* ── Export bar (bottom-center, shown on hover) ────────────── */
+
+.mermaid-canvas-export-bar {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  z-index: 10;
+  background: var(--background-primary);
+  border-radius: 6px;
+  padding: 3px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  border: 1px solid var(--background-modifier-border);
+}
+
+.mermaid-canvas-wrapper:hover .mermaid-canvas-export-bar {
+  opacity: 1;
+}
+
 .mermaid-canvas-btn {
   width: 28px;
   height: 28px;
@@ -190,10 +213,6 @@
   padding: 4px 12px;
 }
 
-.mermaid-canvas-actions {
-  display: flex;
-  gap: 6px;
-}
 
 .mermaid-canvas-btn-primary {
   background: var(--interactive-accent) !important;
@@ -217,6 +236,23 @@
   min-width: 200px;
   border-right: 1px solid var(--background-modifier-border);
   display: flex;
+  flex-direction: column;
+}
+
+.mermaid-canvas-left-footer {
+  display: flex;
+  gap: 8px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--background-modifier-border);
+  flex-shrink: 0;
+}
+
+.mermaid-canvas-left-footer .mermaid-canvas-btn {
+  flex: 1;
+  width: auto;
+  height: 32px;
+  padding: 0 12px;
+  font-size: 13px;
 }
 
 .mermaid-canvas-textarea {
