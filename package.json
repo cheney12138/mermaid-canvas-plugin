@@ -1,6 +1,6 @@
 {
   "name": "obsidian-mermaid-canvas",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Enhanced Mermaid diagram editor for Obsidian — adaptive canvas, zoom/pan, split view, fullscreen",
   "main": "main.js",
   "scripts": {
