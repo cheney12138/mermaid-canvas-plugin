@@ -31,9 +31,6 @@ export default class MermaidCanvasPlugin extends Plugin {
       this.scanElement(element, context.sourcePath);
     });
     this.scheduleRetryScan();
-    setTimeout(() => { this.scanActiveView(); }, 2000);
-    setTimeout(() => { this.scanActiveView(); }, 4000);
-    setTimeout(() => { this.scanActiveView(); }, 8000);
     this.setupObserver();
 
     this.registerEvent(
@@ -233,20 +230,57 @@ export default class MermaidCanvasPlugin extends Plugin {
     this.observer?.disconnect();
     const view = this.app.workspace.getActiveViewOfType(MarkdownView);
     if (!view) return;
+
+    const sp = () => view.file?.path ?? '';
+    const excluded = (el: HTMLElement) =>
+      !!el.closest('.' + CLASSES.CANVAS_WRAPPER) || !!el.closest('.' + CLASSES.SPLIT_MODAL);
+
     this.observer = new MutationObserver((mutations) => {
-      for (const m of mutations) {
-        for (const node of m.addedNodes) {
+      const pending = new Set<HTMLElement>();
+
+      for (const { addedNodes } of mutations) {
+        for (const node of addedNodes) {
           if (!(node instanceof HTMLElement)) continue;
-          if (node.tagName === 'svg' || node.querySelector('svg')) {
-            const mc = node.closest?.(this.MERMAID_SELECTORS) as HTMLElement | null;
-            if (mc && !mc.closest('.' + CLASSES.CANVAS_WRAPPER) && !mc.closest('.' + CLASSES.SPLIT_MODAL)) {
-              this.enhanceBlock(mc, view.file?.path ?? '');
-            }
+          if (excluded(node)) continue;
+
+          // Case 1: the node itself is a mermaid container
+          if (node.matches(this.MERMAID_SELECTORS)) {
+            pending.add(node);
+          }
+          // Case 2: node contains mermaid containers (batch insertion of a section)
+          for (const mc of node.querySelectorAll<HTMLElement>(this.MERMAID_SELECTORS)) {
+            if (!excluded(mc)) pending.add(mc);
+          }
+          // Case 3: node is an SVG inserted directly into a mermaid container
+          if (node.tagName.toLowerCase() === 'svg') {
+            const mc = node.closest<HTMLElement>(this.MERMAID_SELECTORS);
+            if (mc && !excluded(mc)) pending.add(mc);
           }
         }
       }
+
+      for (const mc of pending) {
+        if (mc.querySelector('svg')) {
+          this.enhanceBlock(mc, sp());
+        } else {
+          this.waitAndEnhance(mc, sp());
+        }
+      }
     });
+
     this.observer.observe(view.containerEl, { childList: true, subtree: true });
+  }
+
+  // Poll for SVG in a mermaid container that was added before mermaid.js finished rendering.
+  // Max wait: 20 × 100ms = 2s, after which we give up silently.
+  private waitAndEnhance(container: HTMLElement, sourcePath: string, attempts = 0): void {
+    if (container.closest('.' + CLASSES.CANVAS_WRAPPER)) return;
+    if (container.querySelector('svg')) {
+      this.enhanceBlock(container, sourcePath);
+      return;
+    }
+    if (attempts >= 20) return;
+    setTimeout(() => this.waitAndEnhance(container, sourcePath, attempts + 1), 100);
   }
 
   // ─── Enhance ───────────────────────────────────────────────────
