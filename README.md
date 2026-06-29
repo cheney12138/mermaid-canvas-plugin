@@ -18,7 +18,9 @@ An Obsidian plugin that turns every `mermaid` code block into an interactive can
 
 **Split editor — code left, live preview right**
 
-![Split editor](assets/mermaid-modal-preview.png)
+![Split editor](assets/mermaid-canvas.png)
+
+![Split editor detail](assets/mermaid-modal-preview.png)
 
 ## Features
 
