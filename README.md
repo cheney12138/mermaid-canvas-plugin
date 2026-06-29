@@ -32,9 +32,9 @@ An Obsidian plugin that turns every `mermaid` code block into an interactive can
 - **Fit to canvas** — one click to auto-scale the diagram to fit the available space
 - **Copy code** — copy the raw mermaid source to clipboard
 - **Export PNG / SVG** — download the diagram directly from the canvas
-- **Delete block** — remove the entire code block with one click
-- **Split editor** — `/mermaid` command inserts a block and opens a live split-view editor
-- **Edit interception** — click Obsidian's native edit button to open the split editor pre-loaded with the correct code
+- **Delete block** — remove the entire code block with one click (available in editing mode only)
+- **Split editor** — use the `Mermaid Canvas` command (or type `/` and search for it) to insert a block and open a live split-view editor
+- **Edit interception** — click Obsidian's native edit button on any mermaid block to open the split editor pre-loaded with the correct code
 - **Auto-refresh** — saving in the split editor immediately updates the reading view
 - **Error resilience** — invalid or empty blocks are gracefully skipped
 
@@ -42,7 +42,7 @@ An Obsidian plugin that turns every `mermaid` code block into an interactive can
 
 | Action | How |
 |--------|-----|
-| Insert + edit | `/mermaid` slash command in the editor |
+| Insert + edit | `Mermaid Canvas` command (Command Palette or `/` search) |
 | Edit existing | Click the ✏️ edit button on any rendered mermaid block |
 | Zoom | `Ctrl/Cmd` + scroll wheel (or two-finger pinch on trackpad) |
 | Pan | Click and drag the diagram |
@@ -51,7 +51,7 @@ An Obsidian plugin that turns every `mermaid` code block into an interactive can
 | Copy code | Hover → click Copy button |
 | Export PNG | Hover bottom-center → click Image button |
 | Export SVG | Hover bottom-center → click Download button |
-| Delete block | Hover → click Trash button |
+| Delete block | Hover → click Trash button (editing mode only) |
 
 ## Installation
 
@@ -74,7 +74,6 @@ npm run build
 ## Settings
 
 - **Zoom sensitivity** (1–10) — how fast the scroll wheel zooms
-- **Default split view** — open the code editor alongside the preview by default
 
 ## License
 

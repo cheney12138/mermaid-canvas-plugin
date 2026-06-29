@@ -73,7 +73,6 @@ export default class MermaidCanvasPlugin extends Plugin {
 
       let srcCode = container.getAttribute('data-mermaid-src') ?? '';
       let blockIdx = -1;
-      console.log('[MermaidCanvas] editBtn: srcCode=', srcCode, 'container=', container.tagName, container.className);
       if (!srcCode) {
         const all = [...document.querySelectorAll<HTMLElement>(this.LIVE_SELECTORS)]
           .filter(el => !el.closest('.' + CLASSES.CANVAS_WRAPPER));
@@ -82,8 +81,6 @@ export default class MermaidCanvasPlugin extends Plugin {
         const codes = this.readAllEditorBlocks(
           this.app.workspace.getActiveViewOfType(MarkdownView)?.file?.path ?? ''
         );
-        console.log('[MermaidCanvas]   fallback: idx=', idx, 'codesLen=', codes.length, 'allLen=', all.length,
-          'allElements=', all.map(e => e.tagName + '.' + e.className.substring(0, 40)));
         if (idx >= 0 && idx < codes.length) { srcCode = codes[idx]; blockIdx = idx; }
       }
       const sourcePath = this.app.workspace.getActiveViewOfType(MarkdownView)?.file?.path ?? '';

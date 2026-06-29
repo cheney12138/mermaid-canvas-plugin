@@ -3,14 +3,10 @@ import type MermaidCanvasPlugin from './main';
 
 export interface PluginSettings {
   zoomSensitivity: number; // 1-10 scale, mapped internally
-  defaultSplitView: boolean;
-  mermaidTheme: string;
 }
 
 export const DEFAULT_SETTINGS: PluginSettings = {
   zoomSensitivity: 5,
-  defaultSplitView: true,
-  mermaidTheme: 'default',
 };
 
 export class MermaidCanvasSettingTab extends PluginSettingTab {
@@ -27,7 +23,6 @@ export class MermaidCanvasSettingTab extends PluginSettingTab {
 
     containerEl.createEl('h2', { text: 'Mermaid Canvas Settings' });
 
-    // ── Zoom Sensitivity ──
     new Setting(containerEl)
       .setName('Zoom sensitivity')
       .setDesc('Controls how fast zoom responds to the mouse wheel. Lower = smoother but slower.')
@@ -38,37 +33,6 @@ export class MermaidCanvasSettingTab extends PluginSettingTab {
           .setDynamicTooltip()
           .onChange(async (value) => {
             this.plugin.settings.zoomSensitivity = value;
-            await this.plugin.saveSettings();
-          })
-      );
-
-    // ── Default view mode ──
-    new Setting(containerEl)
-      .setName('Default split view')
-      .setDesc('When enabled, opening a mermaid block shows code + preview side by side.')
-      .addToggle((toggle) =>
-        toggle
-          .setValue(this.plugin.settings.defaultSplitView)
-          .onChange(async (value) => {
-            this.plugin.settings.defaultSplitView = value;
-            await this.plugin.saveSettings();
-          })
-      );
-
-    // ── Mermaid theme ──
-    new Setting(containerEl)
-      .setName('Mermaid theme')
-      .setDesc('The color theme used for rendered diagrams.')
-      .addDropdown((dropdown) =>
-        dropdown
-          .addOption('default', 'Default')
-          .addOption('forest', 'Forest')
-          .addOption('dark', 'Dark')
-          .addOption('neutral', 'Neutral')
-          .addOption('base', 'Base')
-          .setValue(this.plugin.settings.mermaidTheme)
-          .onChange(async (value) => {
-            this.plugin.settings.mermaidTheme = value;
             await this.plugin.saveSettings();
           })
       );
