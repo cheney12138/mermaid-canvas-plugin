@@ -356,4 +356,54 @@
   background: rgba(255, 255, 255, 0.2);
 }
 
+/* ── Large modal ────────────────────────────────────────────── */
+
+.mermaid-modal-large {
+  width: 90vw;
+  height: 85vh;
+  max-width: 95vw;
+  max-height: 90vh;
+}
+
+/* ── CodeMirror mermaid widget ──────────────────────────────── */
+
+.mermaid-cm-widget {
+  display: inline-block;
+  width: 100%;
+  min-height: 80px;
+  cursor: pointer;
+}
+
+.mermaid-cm-svg {
+  max-width: 100%;
+  height: auto;
+}
+
+/* ── Fullscreen wrapper expansion ───────────────────────────── */
+
+.mermaid-canvas-wrapper.mermaid-canvas-wrapper-fs {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100vw;
+  height: 100vh;
+  max-width: none;
+  max-height: none;
+  min-height: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+/* ── Hide mermaid source text in container ──────────────────── */
+
+.mermaid-canvas-source-hidden {
+  font-size: 0;
+  color: transparent;
+  user-select: none;
+}
+
+.mermaid-canvas-source-hidden > :not(svg) {
+  display: none;
+}
+
 

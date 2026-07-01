@@ -71,18 +71,7 @@ export class CanvasView {
 
     // Move the live wrapper into the overlay (no SVG cloning)
     this.fullscreenOverlay.appendChild(this.wrapper);
-
-    // Expand wrapper to fill viewport
-    this.wrapper.style.display = 'flex';
-    this.wrapper.style.alignItems = 'center';
-    this.wrapper.style.justifyContent = 'center';
-    this.wrapper.style.width = '100vw';
-    this.wrapper.style.height = '100vh';
-    this.wrapper.style.maxWidth = 'none';
-    this.wrapper.style.maxHeight = 'none';
-    this.wrapper.style.minHeight = '0';
-    this.wrapper.style.borderRadius = '0';
-    this.wrapper.style.boxShadow = 'none';
+    this.wrapper.classList.add('mermaid-canvas-wrapper-fs');
 
     // Close button
     const closeBtn = this.fullscreenOverlay.createEl('button', {
@@ -126,13 +115,14 @@ export class CanvasView {
     const originalParent = (this as any)._fsParent as HTMLElement | null;
     (this as any)._fsParent = undefined;
     if (this.wrapper && originalParent) {
-      // Reset transform to identity before moving back
+      // Reset transform and remove fullscreen class
       this.scale = 1;
       this.tx = 0;
       this.ty = 0;
       this.applyTransform();
+      this.wrapper.classList.remove('mermaid-canvas-wrapper-fs');
 
-      // Restore all saved styles
+      // Restore saved inline styles
       for (const k of Object.keys(this.fsSave)) {
         (this.wrapper.style as any)[k] = this.fsSave[k];
       }
@@ -308,29 +298,16 @@ export class CanvasView {
     this.content.classList.add(CLASSES.CANVAS_CONTENT);
     this.wrapper.appendChild(this.content);
 
-    // Hide source code: collapse any text content and non-SVG children
+    // Hide source code: move SVG out of PRE, hide text via CSS class
     if (mermaidContainer.childNodes.length > 0) {
-      // Check if the container itself is a <pre> with text content
       if (mermaidContainer.tagName === 'PRE') {
-        // Move SVG out, hide the PRE's text
         const svg = mermaidContainer.querySelector('svg');
         if (svg && mermaidContainer.parentElement) {
           mermaidContainer.parentElement.insertBefore(svg, mermaidContainer);
         }
       }
-      // Hide all non-SVG children
-      for (const child of [...mermaidContainer.children]) {
-        if (child.tagName !== 'svg' && !(child as HTMLElement).querySelector?.('svg')) {
-          (child as HTMLElement).style.display = 'none';
-        }
-      }
-      // Also hide text nodes by collapsing the container if it's a PRE
-      if (mermaidContainer.tagName === 'PRE') {
-        mermaidContainer.style.fontSize = '0';
-        mermaidContainer.style.color = 'transparent';
-        mermaidContainer.style.userSelect = 'none';
-      }
     }
+    mermaidContainer.addClass('mermaid-canvas-source-hidden');
     // Insert the wrapper at the same position and move container in
     insertionPoint.insertBefore(this.wrapper, mermaidContainer);
     this.content.appendChild(mermaidContainer);

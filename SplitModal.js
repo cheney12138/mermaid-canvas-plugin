@@ -10,7 +10,7 @@ export class SplitModal extends Modal {
         super(app);
         this.renderTimer = null;
         this.splitView = true;
-        this.dirty = false;
+        this.saved = false;
         this.options = options;
     }
     onOpen() {
@@ -31,7 +31,6 @@ export class SplitModal extends Modal {
         // ── Toolbar ──
         const toolbar = contentEl.createDiv({ cls: CLASSES.SPLIT_TOOLBAR });
         toolbar.createEl('span', { text: 'Mermaid Canvas', cls: 'mermaid-canvas-title' });
-        // Toggle button: hidden when forced preview-only (reading mode)
         if (!this.options.startInPreviewOnly) {
             const toggleBtn = toolbar.createEl('button', {
                 text: 'Preview Only',
@@ -46,12 +45,30 @@ export class SplitModal extends Modal {
         }
         // ── Main area ──
         const main = contentEl.createDiv({ cls: 'mermaid-canvas-main' });
-        // Left: code editor
+        // Left: code editor + action buttons
         const leftPanel = main.createDiv({ cls: CLASSES.SPLIT_LEFT });
         this.textarea = leftPanel.createEl('textarea', { cls: 'mermaid-canvas-textarea' });
         this.textarea.value = this.options.initialCode;
         this.textarea.setAttribute('spellcheck', 'false');
         this.textarea.setAttribute('placeholder', 'Enter Mermaid code here...\n\ne.g.\ngraph TD\n    A-->B\n    B-->C');
+        if (!this.options.startInPreviewOnly && this.options.onSave) {
+            const footer = leftPanel.createDiv({ cls: 'mermaid-canvas-left-footer' });
+            const cancelBtn = footer.createEl('button', {
+                text: 'Cancel',
+                cls: CLASSES.CONTROL_BTN,
+                title: 'Discard changes',
+            });
+            cancelBtn.addEventListener('click', () => this.close());
+            const saveBtn = footer.createEl('button', {
+                text: 'Save',
+                cls: CLASSES.CONTROL_BTN + ' mermaid-canvas-btn-primary',
+                title: 'Save changes',
+            });
+            saveBtn.addEventListener('click', () => {
+                this.saved = true;
+                this.close();
+            });
+        }
         // Right: preview canvas
         this.rightPanel = main.createDiv({ cls: CLASSES.SPLIT_RIGHT });
         // Initialize CanvasView in preview mode
@@ -62,7 +79,6 @@ export class SplitModal extends Modal {
         this.canvasView.mountFromCode(this.options.initialCode, this.options.sourcePath);
         // Live preview on input (only meaningful in split view)
         this.textarea.addEventListener('input', () => {
-            this.dirty = true;
             this.scheduleRender();
         });
         // Apply the initial view mode
@@ -90,12 +106,9 @@ export class SplitModal extends Modal {
         }
     }
     onClose() {
-        // Only save if the user actually modified the code (and onSave is provided)
-        if (this.dirty && this.options.onSave) {
-            const finalCode = this.textarea?.value ?? this.options.initialCode;
-            this.options.onSave(finalCode);
+        if (this.saved && this.options.onSave) {
+            this.options.onSave(this.textarea?.value ?? this.options.initialCode);
         }
-        // Cleanup
         if (this.renderTimer)
             clearTimeout(this.renderTimer);
         this.canvasView?.destroy();

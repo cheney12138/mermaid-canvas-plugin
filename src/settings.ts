@@ -21,7 +21,7 @@ export class MermaidCanvasSettingTab extends PluginSettingTab {
     const { containerEl } = this;
     containerEl.empty();
 
-    containerEl.createEl('h2', { text: 'Mermaid Canvas Settings' });
+    new Setting(containerEl).setName('Mermaid Canvas Settings').setHeading();
 
     new Setting(containerEl)
       .setName('Zoom sensitivity')
@@ -30,7 +30,6 @@ export class MermaidCanvasSettingTab extends PluginSettingTab {
         slider
           .setLimits(1, 10, 1)
           .setValue(this.plugin.settings.zoomSensitivity)
-          .setDynamicTooltip()
           .onChange(async (value) => {
             this.plugin.settings.zoomSensitivity = value;
             await this.plugin.saveSettings();

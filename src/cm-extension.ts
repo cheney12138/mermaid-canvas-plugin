@@ -54,10 +54,6 @@ class MermaidWidget extends WidgetType {
   toDOM(): HTMLElement {
     const el = document.createElement('span');
     el.className = 'mermaid-cm-widget';
-    el.style.display = 'inline-block';
-    el.style.width = '100%';
-    el.style.minHeight = '80px';
-    el.style.cursor = 'pointer';
     el.title = 'Double-click to edit';
 
     // Render mermaid SVG asynchronously
@@ -83,12 +79,13 @@ class MermaidWidget extends WidgetType {
       }
       const id = 'mermaid-cm-' + Math.random().toString(36).slice(2);
       const { svg } = await mermaid.render(id, this.code);
-      el.innerHTML = svg;
-      // Remove width/height constraints
-      const svgEl = el.querySelector('svg');
-      if (svgEl) {
-        svgEl.style.maxWidth = '100%';
-        svgEl.style.height = 'auto';
+      // Parse SVG via DOMParser (avoids innerHTML)
+      const parser = new DOMParser();
+      const svgDoc = parser.parseFromString(svg, 'image/svg+xml');
+      const svgNode = svgDoc.documentElement;
+      if (svgNode && svgNode.tagName === 'svg') {
+        svgNode.classList.add('mermaid-cm-svg');
+        el.appendChild(svgNode);
       }
     } catch {
       el.textContent = '[Mermaid parse error]';
