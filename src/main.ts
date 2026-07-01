@@ -354,7 +354,7 @@ export default class MermaidCanvasPlugin extends Plugin {
 
         // Try data-line first — precise line-based lookup for reading mode
         const lineAttr = container.closest('[data-line]')?.getAttribute('data-line');
-        const lineNum = lineAttr !== undefined ? parseInt(lineAttr) : -1;
+        const lineNum = lineAttr != null ? parseInt(lineAttr, 10) : -1;
         if (lineNum >= 0) {
           this.readBlockFromVaultByLine(sourcePath, lineNum).then(code => {
             if (code) { cv.setSourceCode(code); return; }
