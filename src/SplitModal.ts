@@ -38,13 +38,10 @@ export class SplitModal extends Modal {
       this.splitView = false;
     }
 
-    // Set modal dimensions via JS for reliable sizing
+    // Apply large modal sizing via CSS class
     const modalEl = containerEl.querySelector('.modal') as HTMLElement;
     if (modalEl) {
-      modalEl.style.width = '90vw';
-      modalEl.style.height = '85vh';
-      modalEl.style.maxWidth = '95vw';
-      modalEl.style.maxHeight = '90vh';
+      modalEl.classList.add('mermaid-modal-large');
     }
 
     // ── Toolbar ──

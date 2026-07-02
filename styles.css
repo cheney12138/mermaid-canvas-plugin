@@ -52,18 +52,6 @@
   box-shadow: none;
 }
 
-/* Generic hidden state (source code children hidden behind the rendered SVG) */
-.mermaid-canvas-hidden {
-  display: none;
-}
-
-/* Collapses a <pre> source block's own text so only the moved-out SVG shows */
-.mermaid-canvas-source-collapsed {
-  font-size: 0;
-  color: transparent;
-  user-select: none;
-}
-
 /* Hide Obsidian's native code block buttons inside our canvas */
 .mermaid-canvas-wrapper .edit-block-button,
 .mermaid-canvas-wrapper .copy-code-button,
@@ -383,6 +371,41 @@
 
 .theme-dark .mermaid-canvas-fs-close:hover {
   background: rgba(255, 255, 255, 0.2);
+}
+
+/* ── Large modal ────────────────────────────────────────────── */
+
+.mermaid-modal-large {
+  width: 90vw;
+  height: 85vh;
+  max-width: 95vw;
+  max-height: 90vh;
+}
+
+/* ── CodeMirror mermaid widget ──────────────────────────────── */
+
+.mermaid-cm-widget {
+  display: inline-block;
+  width: 100%;
+  min-height: 80px;
+  cursor: pointer;
+}
+
+.mermaid-cm-svg {
+  max-width: 100%;
+  height: auto;
+}
+
+/* ── Hide mermaid source text in container ──────────────────── */
+
+.mermaid-canvas-source-hidden {
+  font-size: 0;
+  color: transparent;
+  user-select: none;
+}
+
+.mermaid-canvas-source-hidden > :not(svg) {
+  display: none;
 }
 
 

@@ -28,7 +28,6 @@ export class MermaidCanvasSettingTab extends PluginSettingTab {
         slider
           .setLimits(1, 10, 1)
           .setValue(this.plugin.settings.zoomSensitivity)
-          .setDynamicTooltip()
           .onChange(async (value) => {
             this.plugin.settings.zoomSensitivity = value;
             await this.plugin.saveSettings();

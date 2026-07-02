@@ -113,7 +113,7 @@ export class CanvasView {
     const originalParent = (this as any)._fsParent as HTMLElement | null;
     (this as any)._fsParent = undefined;
     if (this.wrapper && originalParent) {
-      // Reset transform to identity before moving back
+      // Reset transform and remove fullscreen class
       this.scale = 1;
       this.tx = 0;
       this.ty = 0;
@@ -292,27 +292,16 @@ export class CanvasView {
     this.content.classList.add(CLASSES.CANVAS_CONTENT);
     this.wrapper.appendChild(this.content);
 
-    // Hide source code: collapse any text content and non-SVG children
+    // Hide source code: move SVG out of PRE, hide text via CSS class
     if (mermaidContainer.childNodes.length > 0) {
-      // Check if the container itself is a <pre> with text content
       if (mermaidContainer.tagName === 'PRE') {
-        // Move SVG out, hide the PRE's text
         const svg = mermaidContainer.querySelector('svg');
         if (svg && mermaidContainer.parentElement) {
           mermaidContainer.parentElement.insertBefore(svg, mermaidContainer);
         }
       }
-      // Hide all non-SVG children
-      for (const child of [...mermaidContainer.children]) {
-        if (child.tagName !== 'svg' && !(child as HTMLElement).querySelector?.('svg')) {
-          (child as HTMLElement).classList.add(CLASSES.HIDDEN);
-        }
-      }
-      // Also hide text nodes by collapsing the container if it's a PRE
-      if (mermaidContainer.tagName === 'PRE') {
-        mermaidContainer.classList.add(CLASSES.SOURCE_COLLAPSED);
-      }
     }
+    mermaidContainer.addClass('mermaid-canvas-source-hidden');
     // Insert the wrapper at the same position and move container in
     insertionPoint.insertBefore(this.wrapper, mermaidContainer);
     this.content.appendChild(mermaidContainer);
