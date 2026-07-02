@@ -11,8 +11,6 @@ export const CLASSES = {
   EXPORT_BAR: 'mermaid-canvas-export-bar',
   // Fullscreen overlay
   FULLSCREEN_OVERLAY: 'mermaid-canvas-fullscreen',
-  // Applied to the wrapper itself while it's inside the fullscreen overlay
-  WRAPPER_FULLSCREEN: 'mermaid-canvas-wrapper-fullscreen',
   // Split modal
   SPLIT_MODAL: 'mermaid-canvas-split',
   SPLIT_LEFT: 'mermaid-canvas-left',

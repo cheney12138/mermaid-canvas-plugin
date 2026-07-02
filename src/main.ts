@@ -339,7 +339,12 @@ export default class MermaidCanvasPlugin extends Plugin {
       }
 
       const readOnly = !!container.closest('.markdown-preview-view');
-      const cv = new CanvasView(container, { zoomSensitivity: this.getEffectiveSensitivity(), readOnly });
+      const cv = new CanvasView(container, {
+        zoomSensitivity: this.getEffectiveSensitivity(),
+        readOnly,
+        getScroll: () => this.app.workspace.getActiveViewOfType(MarkdownView)?.currentMode.getScroll(),
+        restoreScroll: (scroll) => this.app.workspace.getActiveViewOfType(MarkdownView)?.currentMode.applyScroll(scroll),
+      });
       cv.mount(svg);
       cv.setSourceCode(copyCode);
 
