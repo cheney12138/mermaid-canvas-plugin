@@ -373,9 +373,18 @@ export default class MermaidCanvasPlugin extends Plugin {
           let m: RegExpExecArray | null; let i = 0;
           while ((m = regex.exec(view.editor.getValue())) !== null) {
             if (i === blockIdx) {
+              const scroll = view.currentMode.getScroll();
               view.editor.replaceRange('',
                 view.editor.offsetToPos(m.index),
                 view.editor.offsetToPos(m.index + m[0].length));
+              // Removing the block re-renders reading view from scratch, which resets
+              // scroll to the top. Re-apply the saved position across a few timings
+              // to win the race against that re-render.
+              const restoreScroll = () => view.currentMode.applyScroll(scroll);
+              restoreScroll();
+              window.requestAnimationFrame(() => window.requestAnimationFrame(restoreScroll));
+              window.setTimeout(restoreScroll, 100);
+              window.setTimeout(restoreScroll, 300);
               return;
             }
             i++;

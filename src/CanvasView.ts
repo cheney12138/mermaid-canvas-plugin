@@ -46,8 +46,6 @@ export class CanvasView {
   // Fullscreen state
   private fullscreenOverlay: HTMLElement | null = null;
   private fullscreenKeyDown: ((e: KeyboardEvent) => void) | null = null;
-  // Saved CSS state (anything we mutate in enterFullscreen)
-  private fsSave: Record<string, string> = {};
 
   // ─── Fullscreen ───────────────────────────────────────────────
 
@@ -56,11 +54,6 @@ export class CanvasView {
 
     const doc = this.wrapper.ownerDocument;
 
-    // Save original state
-    const keys = ['display','width','height','maxWidth','maxHeight','minHeight',
-                  'alignItems','justifyContent','borderRadius','boxShadow'];
-    this.fsSave = {};
-    for (const k of keys) this.fsSave[k] = this.wrapper.style.getPropertyValue(k);
     const originalParent = this.wrapper.parentElement;
     // Store for exitFullscreen to access
     (this as any)._fsParent = originalParent;
@@ -72,17 +65,11 @@ export class CanvasView {
     // Move the live wrapper into the overlay (no SVG cloning)
     this.fullscreenOverlay.appendChild(this.wrapper);
 
-    // Expand wrapper to fill viewport
-    this.wrapper.style.display = 'flex';
-    this.wrapper.style.alignItems = 'center';
-    this.wrapper.style.justifyContent = 'center';
-    this.wrapper.style.width = '100vw';
-    this.wrapper.style.height = '100vh';
-    this.wrapper.style.maxWidth = 'none';
-    this.wrapper.style.maxHeight = 'none';
-    this.wrapper.style.minHeight = '0';
-    this.wrapper.style.borderRadius = '0';
-    this.wrapper.style.boxShadow = 'none';
+    // Expand wrapper to fill viewport (sizing lives in CSS, see .mermaid-canvas-wrapper-fullscreen).
+    // Clear the inline height that fitToCanvas() may have set in normal view — being inline,
+    // it would otherwise outrank the fullscreen class's height and keep the wrapper clipped.
+    this.wrapper.setCssStyles({ height: '' });
+    this.wrapper.classList.add(CLASSES.WRAPPER_FULLSCREEN);
 
     // Close button
     const closeBtn = this.fullscreenOverlay.createEl('button', {
@@ -132,11 +119,8 @@ export class CanvasView {
       this.ty = 0;
       this.applyTransform();
 
-      // Restore all saved styles
-      for (const k of Object.keys(this.fsSave)) {
-        (this.wrapper.style as any)[k] = this.fsSave[k];
-      }
-      this.fsSave = {};
+      // Remove fullscreen sizing
+      this.wrapper.classList.remove(CLASSES.WRAPPER_FULLSCREEN);
 
       // Move wrapper back to original parent
       originalParent.appendChild(this.wrapper);
@@ -321,14 +305,12 @@ export class CanvasView {
       // Hide all non-SVG children
       for (const child of [...mermaidContainer.children]) {
         if (child.tagName !== 'svg' && !(child as HTMLElement).querySelector?.('svg')) {
-          (child as HTMLElement).style.display = 'none';
+          (child as HTMLElement).classList.add(CLASSES.HIDDEN);
         }
       }
       // Also hide text nodes by collapsing the container if it's a PRE
       if (mermaidContainer.tagName === 'PRE') {
-        mermaidContainer.style.fontSize = '0';
-        mermaidContainer.style.color = 'transparent';
-        mermaidContainer.style.userSelect = 'none';
+        mermaidContainer.classList.add(CLASSES.SOURCE_COLLAPSED);
       }
     }
     // Insert the wrapper at the same position and move container in
@@ -534,9 +516,10 @@ export class CanvasView {
     this.applyTransform();
 
     // In inline view, shrink wrapper to the rendered SVG height so there's no dead vertical space.
-    // Fullscreen keeps its own sizing; height is saved/restored by enterFullscreen/exitFullscreen.
-    if (!isFs) {
-      this.wrapper.style.height = Math.ceil(svgH * this.scale + 24) + 'px';
+    // Skip in fullscreen (has its own sizing) and in SplitModal (right panel uses CSS height: 100%).
+    const inModal = !!this.wrapper.closest('.' + CLASSES.SPLIT_MODAL);
+    if (!isFs && !inModal) {
+      this.wrapper.setCssStyles({ height: Math.ceil(svgH * this.scale + 24) + 'px' });
     }
   }
 
@@ -605,9 +588,10 @@ export class CanvasView {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
-  private showToast(message: string): void {
+  private showToast(message: string, variant?: 'warning'): void {
     const toast = document.createElement('div');
     toast.className = 'mermaid-canvas-toast';
+    if (variant) toast.classList.add(`mermaid-canvas-toast-${variant}`);
     toast.textContent = message;
     document.body.appendChild(toast);
     setTimeout(() => {
@@ -625,8 +609,11 @@ export class CanvasView {
 
   private applyTransform(): void {
     if (!this.content) return;
-    this.content.style.transform = `translate(${this.tx}px, ${this.ty}px) scale(${this.scale})`;
-    this.content.style.transformOrigin = 'center center';
+    // transform-origin is static and lives in CSS (.mermaid-canvas-content); only the
+    // per-frame transform itself needs to be set here.
+    this.content.setCssStyles({
+      transform: `translate(${this.tx}px, ${this.ty}px) scale(${this.scale})`,
+    });
   }
 
   /** Get the underlying SVG element */
@@ -637,7 +624,10 @@ export class CanvasView {
   /** Get the wrapper element (for embedding) */
   setSourceCode(code: string): void { this.sourceCode = code; }
   setOnDelete(fn: (() => void) | undefined): void { this.options.onDelete = fn; }
-  deleteBlock(): void { this.options.onDelete?.(); }
+  deleteBlock(): void {
+    this.showToast('Diagram deleted', 'warning');
+    this.options.onDelete?.();
+  }
   getWrapper(): HTMLElement {
     return this.wrapper;
   }

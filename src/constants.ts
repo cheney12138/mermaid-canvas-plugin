@@ -11,6 +11,12 @@ export const CLASSES = {
   EXPORT_BAR: 'mermaid-canvas-export-bar',
   // Fullscreen overlay
   FULLSCREEN_OVERLAY: 'mermaid-canvas-fullscreen',
+  // Applied to the wrapper itself while it's inside the fullscreen overlay
+  WRAPPER_FULLSCREEN: 'mermaid-canvas-wrapper-fullscreen',
+  // Generic hidden state (source code children hidden behind the rendered SVG)
+  HIDDEN: 'mermaid-canvas-hidden',
+  // Collapses a <pre> source block's own text so only the moved-out SVG shows
+  SOURCE_COLLAPSED: 'mermaid-canvas-source-collapsed',
   // Split modal
   SPLIT_MODAL: 'mermaid-canvas-split',
   SPLIT_LEFT: 'mermaid-canvas-left',

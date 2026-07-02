@@ -22,6 +22,7 @@
   align-items: center;
   justify-content: center;
   will-change: transform;
+  transform-origin: center center;
 }
 
 .mermaid-canvas-content > * {
@@ -38,6 +39,29 @@
 
 .mermaid-canvas-wrapper.dragging {
   cursor: grabbing;
+}
+
+/* Applied to the wrapper itself while it sits inside the fullscreen overlay */
+.mermaid-canvas-wrapper-fullscreen {
+  width: 100vw;
+  height: 100vh;
+  max-width: none;
+  max-height: none;
+  min-height: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+/* Generic hidden state (source code children hidden behind the rendered SVG) */
+.mermaid-canvas-hidden {
+  display: none;
+}
+
+/* Collapses a <pre> source block's own text so only the moved-out SVG shows */
+.mermaid-canvas-source-collapsed {
+  font-size: 0;
+  color: transparent;
+  user-select: none;
 }
 
 /* Hide Obsidian's native code block buttons inside our canvas */
@@ -327,8 +351,8 @@
   top: 24px;
   left: 50%;
   transform: translateX(-50%);
-  background: var(--background-modifier-message, rgba(0, 0, 0, 0.75));
-  color: var(--text-normal);
+  background: rgba(0, 0, 0, 0.8);
+  color: #fff;
   padding: 10px 24px;
   border-radius: 8px;
   font-size: 14px;
@@ -336,6 +360,11 @@
   pointer-events: none;
   opacity: 1;
   transition: opacity 0.3s ease;
+}
+
+.mermaid-canvas-toast-warning {
+  background: #fff3cd;
+  color: #664d03;
 }
 
 .mermaid-canvas-toast.mermaid-canvas-toast-hide {
