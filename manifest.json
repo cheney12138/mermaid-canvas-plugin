@@ -1,7 +1,7 @@
 {
   "id": "mermaid-canvas",
   "name": "Mermaid Canvas",
-  "version": "0.1.1",
+  "version": "0.1.3",
   "minAppVersion": "1.5.0",
   "description": "Enhanced Mermaid diagram editor with adaptive canvas, smooth zoom/pan, split view, and fullscreen support.",
   "author": "cheney",
