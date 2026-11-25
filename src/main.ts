@@ -342,6 +342,9 @@ export default class MermaidCanvasPlugin extends Plugin {
       const cv = new CanvasView(container, {
         zoomSensitivity: this.getEffectiveSensitivity(),
         readOnly,
+        onInternalLink: (linkText, newLeaf) => {
+          void this.app.workspace.openLinkText(linkText, sourcePath, newLeaf);
+        },
         getScroll: () => this.app.workspace.getActiveViewOfType(MarkdownView)?.currentMode.getScroll(),
         restoreScroll: (scroll) => this.app.workspace.getActiveViewOfType(MarkdownView)?.currentMode.applyScroll(scroll),
       });

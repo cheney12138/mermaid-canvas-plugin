@@ -1,9 +1,11 @@
-import { setIcon, MarkdownRenderer, Component } from 'obsidian';
+import { setIcon, MarkdownRenderer, Component, Keymap } from 'obsidian';
+import type { PaneType } from 'obsidian';
 import { CLASSES, CANVAS_DEFAULTS } from './constants';
 
 export interface CanvasOptions {
   zoomSensitivity: number;
   onDelete?: () => void;
+  onInternalLink?: (linkText: string, newLeaf?: PaneType | boolean) => void;
   readOnly?: boolean;
   // Editor/reading-view scroll position, so entering/exiting fullscreen doesn't
   // let the height change (during the DOM move + refit) drift the viewport.
@@ -39,6 +41,8 @@ export class CanvasView {
 
   // Drag state
   private dragging = false;
+  private dragMoved = false;
+  private suppressClick = false;
   private dragStartX = 0;
   private dragStartY = 0;
   private dragStartTx = 0;
@@ -59,15 +63,8 @@ export class CanvasView {
 
   // ─── Fullscreen ───────────────────────────────────────────────
   //
-  // Moves the wrapper into a document.body-level overlay, matching the
-  // original (pre-lint-fix) implementation exactly — same DOM move, same
-  // save/restore of inline styles — just via setCssStyles() instead of
-  // direct `.style.x = y` writes, which is enough to satisfy Obsidian's
-  // no-static-styles-assignment check without changing any behavior.
-  // (A CSS-class based version of this, and a version using the native
-  // Fullscreen API, were both tried and reverted — see git history — the
-  // former left orphaned wrappers behind in live preview, the latter had a
-  // slow transition and flickered on exit.)
+  // Moves the wrapper into a document.body-level overlay without cloning
+  // the SVG. Inline styles are saved and restored on exit.
 
   enterFullscreen(): void {
     if (this.fullscreenOverlay || !this.wrapper) return;
@@ -112,6 +109,19 @@ export class CanvasView {
     });
     setIcon(closeBtn, 'x');
     closeBtn.addEventListener('click', () => this.exitFullscreen());
+
+    this.fullscreenOverlay.addEventListener('click', (e) => {
+      const link = (e.target as Element).closest('.internal-link');
+      if (!link) return;
+      const linkText = link.getAttribute('href') ?? link.textContent?.trim();
+      if (!linkText || !this.options.onInternalLink) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+      const newLeaf = Keymap.isModEvent(e);
+      this.exitFullscreen();
+      this.options.onInternalLink(linkText, newLeaf);
+    });
 
     // Click on backdrop to close
     this.fullscreenOverlay.addEventListener('click', (e) => {
@@ -198,6 +208,8 @@ export class CanvasView {
   private onMouseDown: (e: MouseEvent) => void;
   private onMouseMove: (e: MouseEvent) => void;
   private onMouseUp: (e: MouseEvent) => void;
+  private onClickCapture: (e: MouseEvent) => void;
+  private onDragStart: (e: DragEvent) => void;
 
   // Obsidian component for MarkdownRenderer (used in split modal context)
   private mdComponent: Component | null = null;
@@ -213,6 +225,8 @@ export class CanvasView {
     this.onMouseDown = this.handleMouseDown.bind(this);
     this.onMouseMove = this.handleMouseMove.bind(this);
     this.onMouseUp = this.handleMouseUp.bind(this);
+    this.onClickCapture = this.handleClickCapture.bind(this);
+    this.onDragStart = this.handleDragStart.bind(this);
   }
 
   /** Wrap an already-rendered SVG element (inline reading-view usage) */
@@ -414,6 +428,8 @@ export class CanvasView {
   private bindEvents(): void {
     this.wrapper.addEventListener('wheel', this.onWheel, { passive: false });
     this.wrapper.addEventListener('mousedown', this.onMouseDown);
+    this.wrapper.addEventListener('click', this.onClickCapture, true);
+    this.wrapper.addEventListener('dragstart', this.onDragStart);
     document.addEventListener('mousemove', this.onMouseMove);
     document.addEventListener('mouseup', this.onMouseUp);
     // keydown only needed for fullscreen — registered on enter, removed on exit
@@ -426,6 +442,8 @@ export class CanvasView {
     this.visibilityObserver = null;
     this.wrapper?.removeEventListener('wheel', this.onWheel);
     this.wrapper?.removeEventListener('mousedown', this.onMouseDown);
+    this.wrapper?.removeEventListener('click', this.onClickCapture, true);
+    this.wrapper?.removeEventListener('dragstart', this.onDragStart);
     document.removeEventListener('mousemove', this.onMouseMove);
     document.removeEventListener('mouseup', this.onMouseUp);
     this.mdComponent?.unload();
@@ -498,22 +516,26 @@ export class CanvasView {
     // Only left button
     if (e.button !== 0) return;
     // Don't start drag on control buttons
-    if ((e.target as HTMLElement).closest('.' + CLASSES.CONTROL_BTN)) return;
+    if ((e.target as Element).closest('.' + CLASSES.CONTROL_BTN)) return;
 
     this.dragging = true;
+    this.dragMoved = false;
+    this.suppressClick = false;
     this.dragStartX = e.clientX;
     this.dragStartY = e.clientY;
     this.dragStartTx = this.tx;
     this.dragStartTy = this.ty;
     this.wrapper.classList.add('dragging');
 
-    e.preventDefault();
+    if (!(e.target as Element).closest('a, .internal-link, .external-link')) e.preventDefault();
   }
 
   private handleMouseMove(e: MouseEvent): void {
     if (!this.dragging) return;
     const dx = e.clientX - this.dragStartX;
     const dy = e.clientY - this.dragStartY;
+    if (!this.dragMoved && Math.hypot(dx, dy) < 3) return;
+    this.dragMoved = true;
     this.tx = this.dragStartTx + dx;
     this.ty = this.dragStartTy + dy;
     this.applyTransform();
@@ -521,8 +543,25 @@ export class CanvasView {
 
   private handleMouseUp(_e: MouseEvent): void {
     if (!this.dragging) return;
+    if (this.dragMoved) {
+      this.suppressClick = true;
+      setTimeout(() => { this.suppressClick = false; }, 0);
+    }
     this.dragging = false;
+    this.dragMoved = false;
     this.wrapper.classList.remove('dragging');
+  }
+
+  private handleClickCapture(e: MouseEvent): void {
+    if (!this.suppressClick) return;
+    this.suppressClick = false;
+    e.preventDefault();
+    e.stopPropagation();
+    e.stopImmediatePropagation();
+  }
+
+  private handleDragStart(e: DragEvent): void {
+    e.preventDefault();
   }
 
   // ─── Fit to canvas ─────────────────────────────────────────────

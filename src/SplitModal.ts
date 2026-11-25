@@ -98,6 +98,10 @@ export class SplitModal extends Modal {
     // Initialize CanvasView in preview mode
     this.canvasView = new CanvasView(this.rightPanel, {
       zoomSensitivity: this.options.zoomSensitivity,
+      onInternalLink: (linkText, newLeaf) => {
+        if (this.textarea.value === this.options.initialCode) this.close();
+        void this.app.workspace.openLinkText(linkText, this.options.sourcePath, newLeaf);
+      },
     });
 
     // Initial render
